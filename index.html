@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>Прогноз погоды</title>
+</head>
+<body>
+    <main>
+        <div class="weather-header">
+            <h1>Погода здесь</h1>
+            <input type='button' class='btn btn_update_desktop' value='Обновить геолокацию'/>
+            <input type='button' class='btn btn_update_mobile'/>
+        </div>
+        <div class='here'>
+        </div>
+        <div class='favorite-header'>
+            <h2 class="favorite-header__name">Избранное</h2>
+            <form class='favorite-header__add-city' name="add_city">
+                <input type='input' name='input' class="add-city_input" placeholder="Добавить новый город">
+                <input type='submit' name='button' class='btn btn_add' value='+'>
+            </form>
+        </div>
+        <ul class='favorite'>
+        </ul>
+    </main>
+</body>
+<script type='text/javascript' src='js/script.js'></script>
+</html>
+
+<template id='weather-info'>
+    <li class="weather-info__string">
+        <span class='weather-info__string-name'></span>
+        <span class='weather-info__string-value'></span>
+    </li>
+</template>
+
+<template id='favorite_city_card'>
+    <li class="favorite_card">
+        <div class='favorite__city-header'>
+            <h3></h3>
+            <span class='temperature'>°C</span>
+            <div class='icon-weather'></div>
+            <input type='button' class='btn btn_delete' value='X'>
+        </div>
+        <ul class='weather-info'>
+        </ul>
+    </li>
+</template>
+
+<template id='here'>
+    <div class='city-header'>
+        <h2></h2>
+        <div class='city-header__item icon-weather icon-weather_here'></div>
+        <div class='city-header__item temperature temperature_here'>°C</div>
+    </div>
+    <ul class='weather-info'>
+    </ul>
+</template>
+
+<template id='loader_here'>
+    <li class='loader loader_here'>
+        Подождите, данные загружаются <div></div><div></div><div></div>
+    </li>
+</template>
+
+<template id='loader_favorite'>
+    <li class='loader'>
+        Подождите, данные загружаются <div></div><div></div><div></div>
+    </li>
+</template>
+
+<template id='error_here'>
+    <div class='error'>
+        Не удалось загрузить информацию.
+    </div>
+</template>
