@@ -1,8 +1,4 @@
-let favoriteCities;
-const defaultCity = 498817;
-
-const apiKey = 'fa80dfd43dd64fe4ef5aaa1ab1bce741';
-const apiLink = 'https://api.openweathermap.org/data/2.5/weather?units=metric&lang=ru&';
+const serverLink = 'http://localhost:3000';
 
 const dirRange = 22.5;
 const fullCircle = 360;
@@ -25,44 +21,48 @@ async function addCity(event) {
     event.preventDefault();
     let input = event.target.input;
     let cityName = input.value;
-    if (cityName === ''){
+    if (cityName === '') {
         return;
     }
 
     input.value = '';
     let loader = getFavoriteLoader();
     document.querySelector('ul.favorite').append(loader);
-
-    let weather;
+    let weatherRequest;
     try {
-        weather = await getWeatherByName(cityName);
+        weatherRequest = await addFavoriteCity(cityName);
+        if (!weatherRequest.success) {
+            removeFavoriteLoader('Не удалось получить информацию');
+            return;
+        }
+        if (weatherRequest.duplicate) {
+            removeFavoriteLoader('Город уже в списке');
+            return;
+        }
+        let weather = weatherRequest.payload;
+        document.querySelector('ul.favorite').replaceChild(createCityCardFavorite(weather), document.querySelector('ul.favorite li.loader'));
     } catch (err) {
         removeFavoriteLoader('Не удалось получить информацию');
-        return;
     }
-    if (weather.cod >= 300) {
-        removeFavoriteLoader('Не удалось получить информацию');
-        return;
-    }
-    else if (favoriteCities.includes(weather.id)) {
-        removeFavoriteLoader(`Город ${cityName} уже есть в списке Избранное`);
-        return;
-    }
-
-    favoriteCities.push(weather.id);
-    localStorage.setItem('favoriteList', JSON.stringify(favoriteCities));
-    document.querySelector('ul.favorite').replaceChild(createCityCardFavorite(weather), document.querySelector('ul.favorite li.loader'));
 }
 
-async function getWeather(url) {
-    const response = await fetch(url);
-    return await response.json();
+async function getWeather(url, method = 'GET') {
+    try {
+        const response = await fetch(url, {
+            method: method,
+            credentials: 'include'
+        });
+        return await response.json();
+    } catch (error) {
+        return { success: false, payload: error };
+    }
 }
 
 function degreesToDirection(degrees) {
     if(degrees < 0 || degrees > fullCircle) {
         return null;
     }
+    let diff;
     for (let dir = 0, i = 0; dir < fullCircle; dir += dirRange, i++) {
         diff = degrees - dir;
         if ((diff >= -0.5 * dirRange && diff < 0.5 * dirRange) ||
@@ -91,16 +91,17 @@ function getError() {
 async function loadHereByCoords(position) {
     let error = getError();
     let weather;
+    let weatherRequest;
     try {
-        weather = await getWeatherByCoords(position.coords.latitude, position.coords.longitude);
+        weatherRequest = await getWeatherByCoords(position.coords.latitude, position.coords.longitude);
+        if (!weatherRequest.success) {
+            insertHereError(error);
+        } else {
+            weather = weatherRequest.payload;
+            document.querySelector('.here').replaceChild(createCityCardHere(weather), document.querySelector('.here .loader'));
+        }
     } catch (err) {
         insertHereError(error);
-    }
-    if(weather.cod >= 300) {
-        insertHereError(error);
-    }
-    else {
-        document.querySelector('.here').replaceChild(createCityCardHere(weather), document.querySelector('.here .loader'));
     }
 }
 
@@ -125,17 +126,18 @@ function removeFavoriteLoader(message) {
 async function loadHereDefault() {
     let error = getError();
     let weather;
+    let weatherRequest;
     try {
-        weather = await getWeatherByID(defaultCity);
+        weatherRequest = await getWeatherDefault();
+        if (!weatherRequest.success) {
+            insertHereError(error);
+        } else {
+            weather = weatherRequest.payload;
+            let cityCard = createCityCardHere(weather);
+            document.querySelector('.here').replaceChild(cityCard, document.querySelector('.here .loader'));
+        }
     } catch (err) {
         insertHereError(error);
-    }
-    if(weather.cod >= 300) {
-        insertHereError(error);
-    }
-    else {
-        let cityCard = createCityCardHere(weather);
-        document.querySelector('.here').replaceChild(cityCard, document.querySelector('.here .loader'));
     }
 }
 
@@ -195,44 +197,71 @@ function cityInfoItems(weather) {
     return items;
 }
 
-function getWeatherByID(cityID) {
-    let requestURL = `${apiLink}id=${encodeURI(cityID)}&appid=${apiKey}`;
+function getWeatherByName(cityName) {
+    let requestURL = serverLink + '/weather/city?q=' + encodeURI(cityName);
     return getWeather(requestURL);
 }
 
-function getWeatherByName(cityName) {
-    let requestURL = `${apiLink}q=${encodeURI(cityName)}&appid=${apiKey}`;
+function getWeatherDefault(){
+    let requestURL = serverLink + '/weather/default';
     return getWeather(requestURL);
 }
 
 function getWeatherByCoords(latitude, longitude) {
-    let requestURL = `${apiLink}lat=${encodeURI(latitude)}&lon=${encodeURI(longitude)}&appid=${apiKey}`;
+    let requestURL = serverLink + '/weather/coordinates?lat=' + encodeURI(latitude) + '&lon=' + encodeURI(longitude);
     return getWeather(requestURL);
 }
 
+function getFavoriteWeatherList() {
+    let requestURL = serverLink + '/favourites';
+    return getWeather(requestURL);
+}
+
+function getWeatherByID(cityID) {
+    let requestURL = serverLink + '/weather/' + encodeURI(cityID);
+    return getWeather(requestURL);
+}
+
+function addFavoriteCity(cityName) {
+    let requestURL = serverLink + '/favourites/' + encodeURI(cityName);
+    return getWeather(requestURL, 'POST');
+}
+
+function deleteFavoriteCity(cityID) {
+    let requestURL = serverLink + '/favourites/' + encodeURI(cityID);
+    return getWeather(requestURL, 'DELETE');
+}
+
 async function loadFavorites() {
-    if (localStorage.getItem('favoriteList') == null) {
-        favoriteCities = [];
-        return;
-    }
-    favoriteCities = JSON.parse(localStorage.getItem('favoriteList'));
-    for(let i = 0; i < favoriteCities.length; i++){
-        let loader = getFavoriteLoader();
-        document.querySelector('ul.favorite').append(loader);
-    }
-    let weather;
-    for (let cityID of favoriteCities) {
-        try {
-            weather = await getWeatherByID(cityID);
-        } catch (err) {
-            removeFavoriteLoader('Не удалось получить информацию');
+    let weatherRequest;
+    try {
+        let weatherResponse = await getFavoriteWeatherList();
+        if (!weatherResponse.success) {
+            alert('Не удалось получить список избранных городов');
+            return;
         }
-        if (weather.cod >= 300) {
-            removeFavoriteLoader('Не удалось получить информацию');
-        } else {
-            let cityCard = createCityCardFavorite(weather);
-            document.querySelector('ul.favorite').replaceChild(cityCard, document.querySelector('ul.favorite li.loader'));
+        let favoriteCities = weatherResponse.payload;
+        for (let i = 0; i < favoriteCities.length; i++) {
+            let loader = getFavoriteLoader();
+            document.querySelector('ul.favorite').append(loader);
         }
+        let weather;
+        for (let cityID of favoriteCities) {
+            try {
+                weatherRequest = await getWeatherByID(cityID);
+                if (!weatherRequest.success) {
+                    removeFavoriteLoader(weatherRequest.payload);
+                } else {
+                    weather = weatherRequest.payload;
+                    let cityCard = createCityCardFavorite(weather);
+                    document.querySelector('ul.favorite').replaceChild(cityCard, document.querySelector('ul.favorite li.loader'));
+                }
+            } catch (err) {
+                removeFavoriteLoader('Не удалось получить информацию');
+            }
+        }
+    } catch (error) {
+        alert('Не удалось получить список избранных городов');
     }
 }
 
@@ -252,15 +281,18 @@ function createCityCardFavorite(weather) {
     return card;
 }
 
-function deleteCity(event) {
+async function deleteCity(event) {
     let cityCard = event.target.closest('li');
     let cityID = Number(cityCard.getAttribute('data-city_id'));
-    for (let i = 0; i < favoriteCities.length; i++) {
-        if (favoriteCities[i] === cityID) {
-            favoriteCities.splice(i, 1);
-            break;
+    let response;
+    try {
+        response = await deleteFavoriteCity(cityID);
+        if (response.success) {
+            cityCard.remove();
+        } else {
+            alert('Не удалось удалить город');
         }
+    } catch (error) {
+        alert(error);
     }
-    cityCard.remove();
-    localStorage.setItem('favoriteList', JSON.stringify(favoriteCities));
 }
