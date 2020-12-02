@@ -7,6 +7,7 @@ const directions = [
     "восточный", "восточно-юго-восточный", "юго-восточный", "юго-юго-восточный",
     "южный", "юго-юго-западный", "юго-западный", "западно-юго-западный",
     "западный", "западно-северо-западный", "северо-западный", "северо-северо-западный"];
+const defaultCityID = 498817;
 
 window.onload = function() {
     loadHere();
@@ -21,10 +22,6 @@ async function addCity(event) {
     event.preventDefault();
     let input = event.target.input;
     let cityName = input.value;
-    if (cityName === '') {
-        return;
-    }
-
     input.value = '';
     let loader = getFavoriteLoader();
     document.querySelector('ul.favorite').append(loader);
@@ -32,7 +29,7 @@ async function addCity(event) {
     try {
         weatherRequest = await addFavoriteCity(cityName);
         if (!weatherRequest.success) {
-            removeFavoriteLoader('Не удалось получить информацию');
+            removeFavoriteLoader(weatherRequest.payload);
             return;
         }
         if (weatherRequest.duplicate) {
@@ -202,8 +199,8 @@ function getWeatherByName(cityName) {
     return getWeather(requestURL);
 }
 
-function getWeatherDefault(){
-    let requestURL = serverLink + '/weather/default';
+function getWeatherDefault() {
+    let requestURL = serverLink + '/weather/'+ encodeURI(defaultCityID);
     return getWeather(requestURL);
 }
 
